@@ -52,7 +52,10 @@ export class AuthService {
       console.log(`[Auth] Login exitoso: ${usuario.email} , ${usuario.rol}`);
 
       return {
-        access_token: this.jwtService.sign(payload) 
+        access_token: this.jwtService.sign(payload, { 
+      expiresIn: '1h', // Verifica que esto sea corto (1h, 30m, etc.)
+      secret: process.env.JWT_SECRET 
+       }) 
       };
 
     } catch (error) {
