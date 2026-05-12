@@ -100,6 +100,6 @@ INSERT INTO apuntes (empresa_id, fecha, ejercicio, mes, tipo, concepto, importe)
 -- Usuarios (password = "test1234" hasheado con bcrypt)
 -- ============================================================
 INSERT INTO usuarios (email, password_hash, rol) VALUES
-  ('admin@daem.es',   '$2b$10$abcdefghijklmnopqrstuuVwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ12', 'admin'),
+  ('admin@daem.es',   '$2b$10$TYyjvbiOAINNqYwBDUgPyO2KcFA3zCAGSzLWHrrXNqNH7eAqwUILq', 'admin'),
   ('sergi@daem.es',   '$2b$10$abcdefghijklmnopqrstuuVwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ34', 'viewer'),
   ('maria@daem.es',   '$2b$10$abcdefghijklmnopqrstuuVwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ56', 'viewer');
