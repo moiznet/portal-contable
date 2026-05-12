@@ -7,19 +7,35 @@
 
 ## REP-01
 
-**Archivo y linea:** <!-- ej: backend/src/auth/jwt.guard.ts:25 -->
+**Archivo y linea:**  
+
+backend/src/auth/auth.service.ts:19 
 
 **Descripcion del problema:**
-<!-- Que ocurre exactamente y por que es un problema -->
+
+*El login y la autenticacion no constanta contra la db solo hay un comentario que dice:
+    "// Validacion simulada — en produccion seria contra la DB"
+
+*solo esta quemado email !== 'admin@daem.es' || password !== 'test1234' y arroja un exception de error.
+
+*No es claro que hash uso para el password
 
 **Impacto:**
-<!-- Seguridad / rendimiento / experiencia de usuario / otro -->
+No funciona el login , no compara en la bd al intentar loguearse, no regresa barrer token para comprobacion de usuario activo 
 
 **Correccion aplicada:**
-<!-- Que cambiaste y por que -->
+    1. crear el loging que regrese el access_token.
+        instale el  bcrypt para el hash aunque no dice cual es creo que bcrypt pero no sirve el hasque estaba no estaba completo asi que use bcrypt y guarde una nueva hash para  {
+        "email": "admin@daem.es",
+        "password": "test1234"
+        }
+        como: $2b$10$TYyjvbiOAINNqYwBDUgPyO2KcFA3zCAGSzLWHrrXNqNH7eAqwUILq
+        ahora regresa un token valido con el cual se puede consultar las empresas en [/empresas](http://localhost:3000/empresas)
+
 
 **Commit:**
-<!-- Hash o nombre del commit con la correccion -->
+
+commit: login con bcrypt funcionando y configuracion de gitignore
 
 ---
 
@@ -27,25 +43,73 @@
 
 **Archivo y linea:**
 
+backend/src/auth/auth.service.ts:56
+
 **Descripcion del problema:**
 
+Los tokens expirados o invalidos no son rechazados. 
+Puedo acceder con cualquier token.
+
+
+
+Es por que la firma (Donde genera el Token)
+El error es cómo creas el token en el AuthService. hay que Revisa que tenga el expiresIn:
+
 **Impacto:**
+El impacto de no tener un expiresIn es crítico, especialmente en un entorno de producción. Si omites esa configuración, el token se genera sin fecha de caducidad (técnicamente, por defecto en la mayoría de configuraciones, el token podría durar para siempre o hasta que el servidor se reinicie si el secreto cambia).
+
+Aquí te detallo los riesgos principales:
+
+1. El Riesgo de Seguridad (Secuestro de Sesión)
+Si un atacante logra obtener un token (por ejemplo, a través de un log, un descuido en el navegador o un ataque Man-in-the-Middle), ese token será válido permanentemente.
+
+Con expiración: El atacante tiene una ventana de tiempo corta (ej. 1 hora) para actuar.
+
+Sin expiración: El atacante tiene acceso de por vida a la cuenta del usuario, a menos que tú cambies el JWT_SECRET del servidor (lo que desconectaría a todos los usuarios del sistema).
 
 **Correccion aplicada:**
+    se agrego los siguientes parametros a la firma expiresIn que cuadra el tiempo de caducidad del token en este caso lo puse de una hora, tambien especifique donde esta la palabra secreta para ser cambiada en caso de seguridad.
+    { 
+      expiresIn: '1h', // Verifica que esto sea corto (1h, 30m, etc.)
+      secret: process.env.JWT_SECRET 
+       }
 
 **Commit:**
 
----
+security: implementar validacion de expiracion en JwtGuard y definir expiresIn
 
 ## REP-03
 
 **Archivo y linea:**
 
+/frontend
+
 **Descripcion del problema:**
+
+    al parecer es un cambio de color en un contenedor en el frontend, pero como faltan los archivos 
+    
+    frontend/index.html
+    frontend/src/main.tsx
+    frontend/src/App.tsx
+
+    Esos son los archivos básicos necesarios para que Vite/React arranque y use ReactDOM para renderizar la app.
+
+    y necesitaria un diseño o explicacion de cual es la visual o diseño requerido pues no se puede deducir con lo que hay
 
 **Impacto:**
 
+    Sin frontend/index.html no hay página HTML que Vite sirva, así que el navegador no carga nada.
+
+    Sin frontend/src/main.tsx no hay entry point que importe React/ReactDOM y monte la aplicación.
+
+    Sin frontend/src/App.tsx no hay componente raíz para renderizar la UI.
+
+    Resultado: el frontend no arranca, el build de Vite falla y http://localhost:5173 no mostrará la aplicación.
+
 **Correccion aplicada:**
+
+
+    solicitar el frontend completo con los archivos completos, o solicitar el diseño o lo que se desea en el requerimiento por que es imposible adivinar
 
 **Commit:**
 
@@ -55,9 +119,33 @@
 
 **Archivo y linea:**
 
+    /frontend
+
 **Descripcion del problema:**
 
+    Cuando hay un error al cargar las empresas, la pantalla queda en blanco sin ningun mensaje.
+
+    pero como faltan los archivos 
+    
+    frontend/index.html
+    frontend/src/main.tsx
+    frontend/src/App.tsx
+
+    Esos son los archivos básicos necesarios para que Vite/React arranque y use ReactDOM para renderizar la app.
+
+    y necesitaria un diseño o explicacion de cual es la visual o diseño requerido pues no se puede deducir con lo que hay
+
+
+
 **Impacto:**
+
+    Sin frontend/index.html no hay página HTML que Vite sirva, así que el navegador no carga nada.
+
+    Sin frontend/src/main.tsx no hay entry point que importe React/ReactDOM y monte la aplicación.
+
+    Sin frontend/src/App.tsx no hay componente raíz para renderizar la UI.
+
+    Resultado: el frontend no arranca, el build de Vite falla y http://localhost:5173 no mostrará la aplicación.
 
 **Correccion aplicada:**
 
@@ -69,13 +157,62 @@
 
 **Archivo y linea:**
 
+\backend\src\empresas\empresas.service.ts:19
+\backend\src\empresas\empresas.service.ts:21
+\backend\src\empresas\empresas.controller.ts:25
+\backend\src\empresas\empresas.controller.ts:27
+\backend\src\empresas\empresas.controller.ts:28
+
 **Descripcion del problema:**
+
+el endpoint de empresas es muy lento cuando hay muchas. El equipo tecnico sospecha que hay un problema de rendimiento en la query.
+
+1. se esta realizando un filtro de empresas activas despues de la consulta de empresas, por consiguiente se esta demorando la consulta por que se vuelve a iterar todas las empresas para cumplir el filtro.
+
+2.hace falta un paginador que traiga por paginas todas las empresas para que sea mas eficiente la carga
 
 **Impacto:**
 
+El impacto de tener la consulta como estaba antes era:
+
+Se traía toda la tabla a memoria: La query SELECT ... FROM empresas ORDER BY nombre sin WHERE traía todas las empresas, incluyendo las inactivas.
+
+Transferencia innecesaria de datos: Se enviaban miles de registros desde PostgreSQL al backend a través de la red, aunque luego se descartaban.
+
+Filtrado en memoria ineficiente: Después de recibir todos los datos, Node.js hacía .filter(e => e.activa === true) en RAM, usando CPU y memoria del backend.
+
+Escalabilidad terrible: Con 10,000 empresas:
+
+Si 8,000 eran inactivas, igual se cargaban todas
+El endpoint tardaba mucho más
+Consumía mucha RAM
+Si muchos usuarios lo llamaban simultáneamente, el servidor se saturaba
+No aprovecha el motor SQL: PostgreSQL es muy optimizado para filtrar, pero el código lo hacía después de que los datos salieran de la BD.
+
+Impacto adicional de no tener paginación
+Sin paginación, cada llamada devuelve todos los registros activos de empresas.
+Si hay muchas empresas, la respuesta puede ser enorme y lenta de generar.
+Aumenta el uso de memoria en el backend y el tamaño de la carga en la red.
+La UI recibe demasiados datos y puede tardar en renderizar o quedarse lenta.
+Si muchos usuarios consultan al mismo tiempo, el servidor se sobrecarga más rápido.
+
 **Correccion aplicada:**
 
+En empresas.service.ts se agregó WHERE activa = true a la query de findAll().
+Se eliminó el filtro en memoria .filter(e => e.activa === true) para que la BD haga el filtrado.
+También se añadió paginación en la misma query con LIMIT $1 OFFSET $2, pasando [pageSize, offset].
+Eso hace que la base de datos devuelva solo empresas activas y evita cargar toda la tabla en el backend.
+
+
+AHORA SE CONSULTA ASI AL ENDPOINT:
+http://localhost:3000/empresas?page=1&pageSize=20
+
+(CON LOS PARAMETROS DE PAGINACION)
+
 **Commit:**
+
+perf: optimizar consulta de empresas con filtrado SQL y paginacion
+
 
 ---
 

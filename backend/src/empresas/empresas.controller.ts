@@ -30,12 +30,11 @@ export class EmpresasController {
     try {
       return await this.empresasService.findAll(pageNum, size);
     } catch (error: unknown) {
+      // log interno (no expuesto)
+      console.error(error);
+
       throw new HttpException(
-        {
-          message: 'Error al obtener empresas',
-          // BUG-06: nunca exponer el error interno al cliente
-          detail: error instanceof Error ? error.stack : String(error),
-        },
+        { message: 'Error al obtener empresas' },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
