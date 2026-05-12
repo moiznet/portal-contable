@@ -3,6 +3,9 @@
 > Completa este documento para cada bug encontrado.
 > Una explicacion honesta y razonada vale mas que una correccion sin justificacion.
 
+
+el nuevo repositorio github es:
+https://github.com/moiznet/portal-contable
 ---
 
 ## REP-01
@@ -220,13 +223,34 @@ perf: optimizar consulta de empresas con filtrado SQL y paginacion
 
 **Archivo y linea:**
 
+\backend\src\empresas\empresas.controller.ts:36
+
 **Descripcion del problema:**
+
+Revisando los logs, vemos que cuando falla el endpoint de empresas se expone el stack trace completo en la respuesta.
+
+Es  porque en EmpresasController.findAll() se captura el error y se vuelve a lanzar un HttpException incluyendo error.stack en el campo detail.
 
 **Impacto:**
 
+Fuga de información sensible: el stack trace puede revelar rutas de archivos, nombres de funciones, librerías y estructura interna del servidor.
+Facilita ataques: un atacante puede usar esos detalles para encontrar vulnerabilidades específicas, como puntos de inyección o rutas privadas.
+Mala experiencia de usuario: el cliente recibe un error técnico no amigable en vez de un mensaje claro y seguro.
+Incumple seguridad y buenas prácticas: las APIs no deben entregar detalles internos del servidor al cliente.
+
 **Correccion aplicada:**
 
+En EmpresasController.findAll() quitar el error.stack de la respuesta al cliente y dejar solo un mensaje genérico. como message: 'Error al obtener empresas'
+
+ambién es buena idea:
+
+mantener el stack trace solo en logs del servidor
+no devolver detail: error.stack
+usar HttpException solo para mensajes seguros al cliente
+
 **Commit:**
+
+security: ocultar stack trace en respuestas de error de empresas
 
 ---
 
@@ -236,12 +260,25 @@ perf: optimizar consulta de empresas con filtrado SQL y paginacion
 
 **Descripcion del problema:**
 
+Hay un problema de seguridad en el login. El payload del token contiene informacion sensible.
+
+En el payload que recibia la firma para generar el token llebab el password como propiedad
+
 **Impacto:**
+
+El JWT es legible para cualquiera: El contenido de un token no está cifrado, solo codificado (Base64). Cualquier persona con acceso al token (un atacante o incluso el usuario desde el navegador) puede ver el password con herramientas como jwt.io en un segundo.
+
+Exposición al cracking offline: Si el atacante obtiene el hash, puede intentar descifrar la contraseña en su propia computadora usando fuerza bruta, sin que tu servidor detecte múltiples intentos de login.
+
+Robo de identidad en otros sitios: Como mucha gente repite contraseñas, si el atacante obtiene la clave de tu sistema, automáticamente tiene acceso a las otras cuentas del usuario (correo, redes sociales, etc.).
 
 **Correccion aplicada:**
 
+se elimino la propiedad del payload y se cambio por el rol el rol si puede ir en el payload del JW
+
 **Commit:**
 
+se hizo en el primer commit
 ---
 
 ## Hallazgos propios (opcional)
@@ -259,9 +296,23 @@ perf: optimizar consulta de empresas con filtrado SQL y paginacion
 ---
 
 ## Reflexion final
+el github es:
+https://github.com/moiznet/portal-contable
 
 **Que cambiarias si tuvieras mas tiempo:**
 
+Haria de nuevo el front end desde 0 , despendiendo las necesidades del cliente.
+
+haria de nuevo el frontend en react ya que faltan los archivos mas importantes por los cuales no se ejecuta el react
+
 **Que regla del estandar de codigo fue mas dificil de cumplir y por que:**
 
+el typado siempre es lo mas 
+
 **Alguna decision tecnica que tomaste y quieras explicar:**
+
+si decidi generar el hash del password de la base de datos por que el que estaba comenzaba como un bcrypt pero no tenia una longitud de 60  caracteres como es lo habitual tampoco era hash256 por que ese solo contiene numero y letras
+
+
+el nuevo repositorio github es:
+https://github.com/moiznet/portal-contable
