@@ -22,11 +22,13 @@ export class EmpresasController {
   constructor(private empresasService: EmpresasService) {}
 
   @Get()
-  async findAll() {
-    // BUG-06: El catch captura el error pero expone el stack trace completo
-    // al cliente en produccion. El usuario ve rutas internas, versiones, etc.
+  async findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const size = pageSize ? parseInt(pageSize, 10) : 20;
+    
     try {
-      return await this.empresasService.findAll();
+      return await this.empresasService.findAll(pageNum, size);
     } catch (error: unknown) {
       throw new HttpException(
         {

@@ -9,16 +9,21 @@ export class EmpresasService {
 
   // BUG-04: Filtra empresas activas EN MEMORIA despues de traer TODAS las filas
   // Con 10.000 empresas esto carga toda la tabla. Debe filtrarse en la query SQL.
-  async findAll(): Promise<Empresa[]> {
+  async findAll(page: number = 1, pageSize: number = 20): Promise<Empresa[]> {
+    
+    const offset = (page - 1) * pageSize;
+    
     const result = await this.pool.query<Empresa>(
       `SELECT id, nombre, nif, programa, activa, ultima_sync
-       FROM empresas
-       ORDER BY nombre`
-      // BUG-04: falta WHERE activa = true en la query
+     FROM empresas
+     WHERE activa = true
+     ORDER BY nombre
+     LIMIT $1 OFFSET $2`,
+    [pageSize, offset]
     );
 
     // El filtro se hace en memoria — ineficiente y no escala
-    return result.rows.filter(e => e.activa === true);
+    return result.rows;
   }
 
   async getResumen(
@@ -36,21 +41,19 @@ export class EmpresasService {
       throw new NotFoundException(`Empresa ${empresaId} no encontrada`);
     }
 
-    // BUG-05: La query usa interpolacion directa de variables en el SQL
-    // Esto es vulnerable a SQL Injection. Debe usar parametros ($1, $2, $3)
+     
     const query = `
-      SELECT
-        tipo,
-        SUM(importe) as total
-      FROM apuntes
-      WHERE empresa_id = '${empresaId}'
-        AND ejercicio = ${ejercicio}
-        AND mes = ${mes}
-      GROUP BY tipo
-    `;
-    // BUG-05: usar parametros: WHERE empresa_id = $1 AND ejercicio = $2 AND mes = $3
+  SELECT
+    tipo,
+    SUM(importe) as total
+  FROM apuntes
+  WHERE empresa_id = $1
+    AND ejercicio = $2
+    AND mes = $3
+  GROUP BY tipo
+`;
 
-    const result = await this.pool.query(query);
+const result = await this.pool.query(query, [empresaId, ejercicio, mes]);
 
     let total_ingresos = 0;
     let total_gastos = 0;
